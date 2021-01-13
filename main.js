@@ -19,32 +19,12 @@ var __values = (this && this.__values) || function(o) {
     throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
 };
 exports.__esModule = true;
-/**
-    import { Workbook, Row, Cell, Worksheet } from 'exceljs';
-
-    let wb: Workbook = new Workbook();
-
-    var fileName: string = "volunteer_attendance_data.xlsx"; //edit this for a different fileName
-
-    wb.xlsx.readFile("./volunteer_attendance_data.xlsx").then(function () {
-        //sheet object
-        let sheet: Worksheet = wb.getWorksheet("Sheet1");
-
-        var totalRowsIncludingEmptyRows:any = sheet.columnCount
-        console.log("total nuumber of rows : " + totalRowsIncludingEmptyRows)
-        // loop till end of row
-
-        for (let i = 1; i <= totalRowsIncludingEmptyRows; i++) {
-            let cellValue = sheet.getRow(i).getCell(2).toString();
-            console.log("Column B value from the row '" + i + "' : " + cellValue)
-        }
-    }
-    )
- */
+var createCsvWriter = require('csv-writer').createObjectCsvWriter;
 var fielName = 'volunteer_attendance_data.csv';
 var papa = require('papaparse');
 var fs = require('fs');
 var file = fs.readFileSync('./' + fielName, 'utf8');
+// const file = fs.writeFileSync()
 // papa.parse(file, {
 //     complete: (result: any) => {
 //         console.log("@@@@@ Complete CSV file : " + result.data)
@@ -55,7 +35,7 @@ var file = fs.readFileSync('./' + fielName, 'utf8');
 // });
 var VolunteerNode = /** @class */ (function () {
     function VolunteerNode(volunteerId, volunteerName) {
-        this.dictionaryWeight = new Map();
+        this.conflictedWeightMap = new Map(); //ConflictvID-->Weight
         this.dateShiftMap = new Map();
         this.volunteerId = volunteerId;
         this.volunteerName = volunteerName;
@@ -89,22 +69,35 @@ var Graph = /** @class */ (function () {
         else {
             retriveNode.dateShiftMap.set(date, shift);
         }
+        this.addEdge(node, date, shift);
     };
-    Graph.prototype.printGraph = function () {
+    Graph.prototype.addEdge = function (node, date, shift) {
         var e_1, _a;
+        //will check if passing node can form any edge among the nodes in the iNodeMap
+        var retriveNode = this.idNodeMap.get(node.getVolunteerID()); //incoming node is already there
         try {
             for (var _b = __values(this.idNodeMap.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var element = _c.value;
-                var outputString = '';
-                outputString = element.getVolunteerName();
-                var conflictedNeighbours = element.getConflictedVolunteer();
-                for (var j = 0; j < conflictedNeighbours.length; j++) {
-                    var neighbour = conflictedNeighbours[j];
-                    var neighbourId = neighbour.getVolunteerID();
-                    var weight = element.dictionaryWeight.get(neighbourId);
-                    outputString = outputString + '\t' + neighbour.getVolunteerName + weight;
+                if (element.dateShiftMap.get(date) == shift && element != retriveNode) {
+                    if (retriveNode) { //sanity check
+                        var retriveNodeConflictedArray = retriveNode.getConflictedVolunteer();
+                        var index = retriveNodeConflictedArray.indexOf(element);
+                        var elementNodeConflictedArray = element.getConflictedVolunteer();
+                        var index2 = elementNodeConflictedArray.indexOf(retriveNode);
+                        if (index == -1) {
+                            retriveNode.getConflictedVolunteer().push(element);
+                        }
+                        if (index2 == -1) {
+                            element.getConflictedVolunteer().push(retriveNode);
+                        }
+                        var currentWeight = retriveNode.conflictedWeightMap.get(element.getVolunteerID());
+                        currentWeight = currentWeight == undefined ? 0 : currentWeight;
+                        retriveNode.conflictedWeightMap.set(element.getVolunteerID(), currentWeight + 1);
+                        currentWeight = element.conflictedWeightMap.get(retriveNode.getVolunteerID());
+                        currentWeight = currentWeight == undefined ? 0 : currentWeight;
+                        element.conflictedWeightMap.set(retriveNode.getVolunteerID(), currentWeight + 1);
+                    }
                 }
-                console.log(outputString);
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -114,6 +107,86 @@ var Graph = /** @class */ (function () {
             }
             finally { if (e_1) throw e_1.error; }
         }
+    };
+    Graph.prototype.printGraph = function () {
+        var e_2, _a;
+        try {
+            for (var _b = __values(this.idNodeMap.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var element = _c.value;
+                var outputString = '';
+                outputString = outputString + element.getVolunteerName() + "\t-->";
+                var conflictedNeighbours = element.getConflictedVolunteer();
+                for (var j = 0; j < conflictedNeighbours.length; j++) {
+                    var neighbour = conflictedNeighbours[j];
+                    var neighbourId = neighbour.getVolunteerID();
+                    var weight = element.conflictedWeightMap.get(neighbourId);
+                    outputString = outputString + '\t' + neighbour.getVolunteerName() + ':' + weight;
+                }
+                console.log(outputString);
+            }
+        }
+        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
+            }
+            finally { if (e_2) throw e_2.error; }
+        }
+    };
+    Graph.prototype.exportToCSV = function () {
+        var e_3, _a;
+        var csvWriter = createCsvWriter({
+            path: 'out.csv',
+            header: [
+                { id: 'node1', title: 'Node1' },
+                { id: 'node2', title: 'Node2' },
+                { id: 'weight', title: 'weight' },
+            ]
+        });
+        var data = [];
+        try {
+            for (var _b = __values(this.idNodeMap.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var element = _c.value;
+                var node1 = element.getVolunteerName();
+                var conflictedNeighbours = element.getConflictedVolunteer();
+                for (var j = 0; j < conflictedNeighbours.length; j++) {
+                    var neighbour = conflictedNeighbours[j];
+                    var neighbourId = neighbour.getVolunteerID();
+                    var weight = element.conflictedWeightMap.get(neighbourId);
+                    var node2 = neighbour.getVolunteerName();
+                    data.push({
+                        node1: node1,
+                        node2: node2,
+                        weight: weight
+                    });
+                }
+            }
+        }
+        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
+            }
+            finally { if (e_3) throw e_3.error; }
+        }
+        // const options = {
+        //     fieldSeparator: ',',
+        //     quoteStrings: '"',
+        //     decimalSeparator: '.',
+        //     showLabels: true,
+        //     showTitle: true,
+        //     title: 'MyAwesomeCSV',
+        //     useTextFile: false,
+        //     useBom: true,
+        //     useKeysAsHeaders: true,
+        //     fielName:'./testOutput.csv'
+        //     // headers: ['Column 1', 'Column 2', etc...] <-- Won't work with useKeysAsHeaders present!
+        // };
+        // const csvExporter = new ExportToCsv(options);
+        // csvExporter.generateCsv(data);
+        csvWriter
+            .writeRecords(data)
+            .then(function () { return console.log('The CSV file was written successfully'); });
     };
     return Graph;
 }());
@@ -133,7 +206,9 @@ papa.parse(file, {
             // console.log(data+' '+shift+' '+reason)
             var newNode = new VolunteerNode(vId, vName);
             graph.addNode(newNode, date, shift);
+            // graph.addEdge(newNode, date, shift)
         }
         graph.printGraph();
+        graph.exportToCSV();
     }
 });
