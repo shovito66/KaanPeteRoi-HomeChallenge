@@ -6,6 +6,7 @@
  * tsconfig.json file--> "downlevelIteration": true,  if not work then compile with this command: tsc.cmd .\main.ts  --downLevelIteration
  * npm i -s csv-writer (for exporting CSV file)
  * Change fileName variable... FILE MUST BE IN CSV FORMAT
+ * tsc.cmd --module amd .\main.ts --downlevelIteration
  * 
  */
 
@@ -13,7 +14,8 @@ import { ExportToCsv } from 'export-to-csv';
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
-var fielName: string = 'volunteer_attendance_data.csv'
+
+var fielName: string = 'volunteer_attendance_data.csv'  //need to change for a diffrent input file
 const papa = require('papaparse');
 const fs = require('fs');
 const file = fs.readFileSync('./' + fielName, 'utf8');
@@ -139,7 +141,7 @@ class Graph {
     exportToCSV() {
 
         const csvWriter = createCsvWriter({
-            path: 'out.csv',
+            path: 'output.csv',
             header: [
                 { id: 'node1', title: 'Node1' },
                 { id: 'node2', title: 'Node2' },
@@ -190,12 +192,13 @@ papa.parse(file, {
             var vName: string = rowData[3]
             var reason: string = rowData[4]
             // console.log(data+' '+shift+' '+reason)
+            
             var newNode = new VolunteerNode(vId, vName);
             graph.addNode(newNode, date, shift);
             // graph.addEdge(newNode, date, shift)
         }
 
-        graph.printGraph();
+        graph.printGraph(); 
         graph.exportToCSV();
     }
 });

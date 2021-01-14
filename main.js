@@ -1,11 +1,14 @@
 "use strict";
 /**
+ * Shovito Barua Soumma
  * @todo:
  * npm install exceljs  //tried for excel
  * npm install papaparse  //for csv  https://chercher.tech/protractor/csv-file-protractor
- *  tsconfig.json file--> "downlevelIteration": true,  if not work then compile with this command: tsc.cmd .\main.ts  --downLevelIteration
+ * tsconfig.json file--> "downlevelIteration": true,  if not work then compile with this command: tsc.cmd .\main.ts  --downLevelIteration
+ * npm i -s csv-writer (for exporting CSV file)
+ * Change fileName variable... FILE MUST BE IN CSV FORMAT
+ * tsc.cmd --module amd .\main.ts --downlevelIteration
  *
- * node class-->volunteer class
  */
 var __values = (this && this.__values) || function(o) {
     var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
@@ -24,15 +27,18 @@ var fielName = 'volunteer_attendance_data.csv';
 var papa = require('papaparse');
 var fs = require('fs');
 var file = fs.readFileSync('./' + fielName, 'utf8');
-// const file = fs.writeFileSync()
-// papa.parse(file, {
-//     complete: (result: any) => {
-//         console.log("@@@@@ Complete CSV file : " + result.data)
-//         console.log("###### row: " + result.data[0])
-//         console.log("****** value in a row: " + result.data[0][2])
-//         console.log("****** value in a Col1 Row 2: " + result.data[1][2])
-//     }
-// });
+/**
+ * papa.parse(file, {
+        complete: (result: any) => {
+            console.log("@@@@@ Complete CSV file : " + result.data)
+            console.log("###### row: " + result.data[0])
+            console.log("****** value in a row: " + result.data[0][2])
+            console.log("****** value in a Col1 Row 2: " + result.data[1][2])
+
+        }
+    });
+
+ * * */
 var VolunteerNode = /** @class */ (function () {
     function VolunteerNode(volunteerId, volunteerName) {
         this.conflictedWeightMap = new Map(); //ConflictvID-->Weight
@@ -136,7 +142,7 @@ var Graph = /** @class */ (function () {
     Graph.prototype.exportToCSV = function () {
         var e_3, _a;
         var csvWriter = createCsvWriter({
-            path: 'out.csv',
+            path: 'output.csv',
             header: [
                 { id: 'node1', title: 'Node1' },
                 { id: 'node2', title: 'Node2' },
@@ -169,21 +175,6 @@ var Graph = /** @class */ (function () {
             }
             finally { if (e_3) throw e_3.error; }
         }
-        // const options = {
-        //     fieldSeparator: ',',
-        //     quoteStrings: '"',
-        //     decimalSeparator: '.',
-        //     showLabels: true,
-        //     showTitle: true,
-        //     title: 'MyAwesomeCSV',
-        //     useTextFile: false,
-        //     useBom: true,
-        //     useKeysAsHeaders: true,
-        //     fielName:'./testOutput.csv'
-        //     // headers: ['Column 1', 'Column 2', etc...] <-- Won't work with useKeysAsHeaders present!
-        // };
-        // const csvExporter = new ExportToCsv(options);
-        // csvExporter.generateCsv(data);
         csvWriter
             .writeRecords(data)
             .then(function () { return console.log('The CSV file was written successfully'); });
